@@ -224,9 +224,6 @@ export const Stage4TeacherPanel: React.FC<Stage4TeacherPanelProps> = ({
             <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
               Rekapitulasi &amp; Pengelolaan Tes Sumatif
             </h2>
-            <p className="text-xs text-slate-500 mt-0.5">
-              {CONFIG.SEKOLAH} • Guru: {CONFIG.GURU} (NIP: {CONFIG.NIP_GURU}) • KKTP: {CONFIG.KKTP}
-            </p>
           </div>
 
           {/* Tombol Aksi Cepat Atas */}

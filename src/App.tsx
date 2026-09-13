@@ -193,14 +193,11 @@ export default function App() {
       {/* Footer Resmi */}
       <footer className="bg-white border-t border-slate-200 py-6 text-center text-xs text-slate-500">
         <div className="max-w-7xl mx-auto px-4 space-y-1.5">
-          <p className="font-semibold text-slate-700">
-            {CONFIG.SEKOLAH} • Kurikulum Merdeka
+          <p id="footer-developer-credit" className="font-semibold text-slate-700">
+            Web Developer-susilo fitri yatmoko
           </p>
           <p>
             Mata Pelajaran: {CONFIG.MATA_PELAJARAN} (Materi: {CONFIG.MATERI}) | Kelas {CONFIG.KELAS} | KKTP: {CONFIG.KKTP}
-          </p>
-          <p className="text-[11px] text-slate-400">
-            Guru Pengampu: {CONFIG.GURU} (NIP. {CONFIG.NIP_GURU}) • Kepala Sekolah: {CONFIG.KEPALA_SEKOLAH} (NIP. {CONFIG.NIP_KEPALA_SEKOLAH})
           </p>
         </div>
       </footer>

@@ -250,47 +250,6 @@ export const Stage1Identity: React.FC<Stage1IdentityProps> = ({
 
         {/* Kolom Kanan: Rincian Info Tes & Ketentuan */}
         <div className="lg:col-span-5 space-y-4">
-          {/* Card Info Sekolah & Guru */}
-          <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-200">
-            <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">
-              Informasi Pelaksanaan Tes
-            </h4>
-            <div className="space-y-2.5 text-xs">
-              <div className="flex justify-between py-1 border-b border-slate-100">
-                <span className="text-slate-500">Satuan Pendidikan</span>
-                <span className="font-bold text-slate-800 text-right">{CONFIG.SEKOLAH}</span>
-              </div>
-              <div className="flex justify-between py-1 border-b border-slate-100">
-                <span className="text-slate-500">Kelas / Mapel</span>
-                <span className="font-bold text-slate-800 text-right">
-                  Kelas {CONFIG.KELAS} • {CONFIG.MATA_PELAJARAN}
-                </span>
-              </div>
-              <div className="flex justify-between py-1 border-b border-slate-100">
-                <span className="text-slate-500">Materi Pokok</span>
-                <span className="font-bold text-slate-800">{CONFIG.MATERI}</span>
-              </div>
-              <div className="flex justify-between py-1 border-b border-slate-100">
-                <span className="text-slate-500">Guru Pengampu</span>
-                <span className="font-semibold text-slate-800">{CONFIG.GURU}</span>
-              </div>
-              <div className="flex justify-between py-1 border-b border-slate-100">
-                <span className="text-slate-500">NIP Guru</span>
-                <span className="font-mono text-slate-700">{CONFIG.NIP_GURU}</span>
-              </div>
-              <div className="flex justify-between py-1 border-b border-slate-100">
-                <span className="text-slate-500">Kepala Sekolah</span>
-                <span className="font-semibold text-slate-800">{CONFIG.KEPALA_SEKOLAH}</span>
-              </div>
-              <div className="flex justify-between py-1">
-                <span className="text-slate-500">Standar KKTP</span>
-                <span className="font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded">
-                  {CONFIG.KKTP} (Skala 100)
-                </span>
-              </div>
-            </div>
-          </div>
-
           {/* Card Komposisi Soal & Aturan */}
           <div className="bg-slate-900 text-white rounded-2xl p-5 shadow-sm">
             <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3 flex items-center gap-1.5">
@@ -323,7 +282,7 @@ export const Stage1Identity: React.FC<Stage1IdentityProps> = ({
               </p>
               <p className="flex items-start gap-1.5">
                 <CheckCircle2 className="w-3.5 h-3.5 text-blue-400 shrink-0 mt-0.5" />
-                <span>Seluruh 22 soal wajib dijawab sebelum jawaban dapat dikirimkan ke server.</span>
+                <span>Seluruh 30 soal wajib dijawab sebelum jawaban dapat dikirimkan ke server.</span>
               </p>
             </div>
           </div>
