@@ -1,6 +1,6 @@
 /**
  * Aplikasi Website Tes Sumatif
- * SD NEGERI 3 LOLOAN TIMUR - KELAS VI
+ * SEKOLAH DASAR - JEMBRANA - KELAS VI
  * Mata Pelajaran: MATEMATIKA (TKA)
  */
 

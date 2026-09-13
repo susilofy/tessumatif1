@@ -1,18 +1,19 @@
 /**
  * Konfigurasi Utama Aplikasi Tes Sumatif
- * SD NEGERI 3 LOLOAN TIMUR
+ * SEKOLAH DASAR - JEMBRANA
  */
 
 export const CONFIG = {
-  SEKOLAH: "SD NEGERI 3 LOLOAN TIMUR",
-  ALAMAT_SEKOLAH: "Jl. Terusan Loloan Timur, Jembrana, Bali",
+  SEKOLAH: "SEKOLAH DASAR",
+  ALAMAT_SEKOLAH: "Jembrana",
+  KOTA: "Jembrana",
   KELAS: "VI",
   MATA_PELAJARAN: "MATEMATIKA",
   MATERI: "TKA (Tes Kemampuan Akademik)",
-  GURU: "SUSILO",
-  NIP_GURU: "198805212011011010",
-  KEPALA_SEKOLAH: "Susilo Fitri Yatmoko, M.Pd",
-  NIP_KEPALA_SEKOLAH: "198805212011011010",
+  GURU: "........................................",
+  NIP_GURU: "........................................",
+  KEPALA_SEKOLAH: "........................................",
+  NIP_KEPALA_SEKOLAH: "........................................",
   KKTP: 70,
   ADMIN_PASSWORD: "GURUADMIN",
   

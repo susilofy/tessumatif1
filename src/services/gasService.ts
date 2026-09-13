@@ -433,11 +433,11 @@ export const gasService = {
  */
 export const GAS_SCRIPT_TEMPLATE = `/**
  * SKRIP GOOGLE APPS SCRIPT UNTUK REKAP TES SUMATIF
- * SD NEGERI 3 LOLOAN TIMUR - KELAS VI
+ * SEKOLAH DASAR - JEMBRANA - KELAS VI
  *
  * PANDUAN PEMASANGAN (HANYA 2 MENIT):
  * 1. Buat Spreadsheet baru di https://sheets.new
- * 2. Beri nama: "Rekap Nilai Tes Sumatif Matematika SDN 3 Loloan Timur"
+ * 2. Beri nama: "Rekap Nilai Tes Sumatif Matematika Sekolah Dasar"
  * 3. Buka menu "Ekstensi" -> "Apps Script"
  * 4. Hapus semua kode default, lalu salin dan tempel SELURUH KODE di bawah ini
  * 5. Klik "Simpan" (ikon disket)

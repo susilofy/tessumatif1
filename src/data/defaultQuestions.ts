@@ -135,7 +135,7 @@ export const INITIAL_QUESTIONS: Question[] = [
     type: 'pg',
     topic: 'Keliling Lingkaran',
     difficulty: 'Mudah',
-    text: 'Sebuah taman kota di Loloan Timur berbentuk lingkaran dengan panjang diameter 28 meter. Di sekeliling tepi taman tersebut akan dipasangi lampu penerangan dengan jarak antarlampu 4 meter. Berapa banyak lampu penerangan yang dibutuhkan? (Gunakan π = 22/7)',
+    text: 'Sebuah taman kota di Jembrana berbentuk lingkaran dengan panjang diameter 28 meter. Di sekeliling tepi taman tersebut akan dipasangi lampu penerangan dengan jarak antarlampu 4 meter. Berapa banyak lampu penerangan yang dibutuhkan? (Gunakan π = 22/7)',
     options: [
       { id: 'A', text: '22 buah' },
       { id: 'B', text: '24 buah' },
@@ -247,7 +247,7 @@ export const INITIAL_QUESTIONS: Question[] = [
     type: 'pg',
     topic: 'Pengolahan Data (Diagram Lingkaran)',
     difficulty: 'Sedang',
-    text: 'Sebuah diagram lingkaran menunjukkan pilihan kegiatan ekstrakurikuler dari 120 siswa kelas VI di SD Negeri 3 Loloan Timur: Pramuka 35%, Bulu Tangkis 25%, Seni Tari 15%, dan sisanya Robotika. Berapakah banyak siswa yang memilih ekstrakurikuler Robotika?',
+    text: 'Sebuah diagram lingkaran menunjukkan pilihan kegiatan ekstrakurikuler dari 120 siswa kelas VI di Sekolah Dasar: Pramuka 35%, Bulu Tangkis 25%, Seni Tari 15%, dan sisanya Robotika. Berapakah banyak siswa yang memilih ekstrakurikuler Robotika?',
     options: [
       { id: 'A', text: '24 siswa' },
       { id: 'B', text: '30 siswa' },
@@ -372,7 +372,7 @@ export const INITIAL_QUESTIONS: Question[] = [
     type: 'pgk_kategori',
     topic: 'Statistika & Analisis KKTP',
     difficulty: 'Sedang',
-    text: 'Berikut disajikan data rekap nilai ulangan matematika dari 30 siswa kelas VI SD Negeri 3 Loloan Timur:\n• Nilai 60 diperoleh oleh 3 siswa\n• Nilai 70 diperoleh oleh 7 siswa\n• Nilai 80 diperoleh oleh 12 siswa\n• Nilai 90 diperoleh oleh 6 siswa\n• Nilai 100 diperoleh oleh 2 siswa\nKKTP mata pelajaran matematika yang ditetapkan sekolah adalah 70. Tentukan kebenaran dari masing-masing pernyataan berikut (Pilih Benar atau Salah):',
+    text: 'Berikut disajikan data rekap nilai ulangan matematika dari 30 siswa kelas VI Sekolah Dasar:\n• Nilai 60 diperoleh oleh 3 siswa\n• Nilai 70 diperoleh oleh 7 siswa\n• Nilai 80 diperoleh oleh 12 siswa\n• Nilai 90 diperoleh oleh 6 siswa\n• Nilai 100 diperoleh oleh 2 siswa\nKKTP mata pelajaran matematika yang ditetapkan sekolah adalah 70. Tentukan kebenaran dari masing-masing pernyataan berikut (Pilih Benar atau Salah):',
     statements: [
       {
         id: 's1',
@@ -450,7 +450,7 @@ export const INITIAL_QUESTIONS: Question[] = [
     type: 'pgk_kategori',
     topic: 'Skala, Denah, & Luas Sebenarnya',
     difficulty: 'Sedang',
-    text: 'Denah lapangan upacara di SD Negeri 3 Loloan Timur digambar dengan skala 1 : 400. Pada denah tersebut, lapangan digambarkan berbentuk persegi panjang dengan ukuran panjang 12 cm dan lebar 8 cm. Tentukan kebenaran dari masing-masing pernyataan berikut (Pilih Benar atau Salah):',
+    text: 'Denah lapangan upacara di Sekolah Dasar digambar dengan skala 1 : 400. Pada denah tersebut, lapangan digambarkan berbentuk persegi panjang dengan ukuran panjang 12 cm dan lebar 8 cm. Tentukan kebenaran dari masing-masing pernyataan berikut (Pilih Benar atau Salah):',
     statements: [
       {
         id: 's1',

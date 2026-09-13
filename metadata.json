@@ -1,6 +1,6 @@
 {
-  "name": "Tes Sumatif Matematika Kelas VI - SD Negeri 3 Loloan Timur",
-  "description": "Aplikasi Tes Sumatif Matematika TKA Kelas VI SD Negeri 3 Loloan Timur dengan 4 tahap tes, sinkronisasi Google Spreadsheet, unduh PDF naskah & hasil tes, serta panel guru.",
+  "name": "Tes Sumatif Matematika Kelas VI - Sekolah Dasar",
+  "description": "Aplikasi Tes Sumatif Matematika TKA Kelas VI Sekolah Dasar Jembrana dengan sinkronisasi Google Spreadsheet, unduh PDF naskah & hasil tes, serta panel guru.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }
