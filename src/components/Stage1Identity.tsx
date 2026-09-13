@@ -81,10 +81,6 @@ export const Stage1Identity: React.FC<Stage1IdentityProps> = ({
     <div className="max-w-4xl mx-auto py-8 px-4 sm:px-6">
       {/* Header Pengumuman Tes */}
       <div className="text-center mb-8">
-        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-800 mb-3 border border-blue-200">
-          <School className="w-3.5 h-3.5" />
-          {CONFIG.SEKOLAH}
-        </span>
         <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
           Tes Sumatif Matematika Kelas {CONFIG.KELAS}
         </h2>
