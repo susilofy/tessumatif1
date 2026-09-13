@@ -32,8 +32,8 @@ export const Navbar: React.FC<NavbarProps> = ({
                   Materi {CONFIG.MATERI}
                 </span>
               </div>
-              <h1 className="text-sm sm:text-base font-bold text-slate-900 tracking-tight leading-tight">
-                {CONFIG.SEKOLAH}
+              <h1 id="navbar-app-title" className="text-sm sm:text-base font-bold text-slate-900 tracking-tight leading-tight">
+                Sekolah Dasar
               </h1>
             </div>
           </div>
