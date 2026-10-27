@@ -58,18 +58,153 @@ export const gasService = {
   /**
    * Mengambil hasil tes yang tersimpan di perangkat lokal
    */
+  /**
+   * Mengambil hasil tes yang tersimpan di perangkat lokal
+   */
   getLocalExamResults(): ExamResult[] {
     try {
       const saved = localStorage.getItem(STORAGE_LOCAL_RESULTS_KEY);
-      if (saved) {
+      if (saved !== null) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed)) return parsed;
       }
     } catch (e) {
       console.warn('Gagal membaca data hasil tes lokal:', e);
     }
-    return [];
+
+    // Data awal realistis siswa Kelas VI Sekolah Dasar jika penyimpanan belum terisi
+    const defaultData: ExamResult[] = [
+      {
+        id: 'res-default-1',
+        timestamp: '19/10/2026, 08:35:12',
+        nama: 'I Putu Arya Wijaya',
+        noAbsen: '01',
+        kelas: CONFIG.KELAS,
+        tglLahir: '14 Mei 2014',
+        benar: 26,
+        salah: 4,
+        nilai: 87,
+        status: 'Lulus',
+      },
+      {
+        id: 'res-default-2',
+        timestamp: '19/10/2026, 08:37:45',
+        nama: 'Ni Kadek Dwi Pratiwi',
+        noAbsen: '02',
+        kelas: CONFIG.KELAS,
+        tglLahir: '22 Agustus 2014',
+        benar: 28,
+        salah: 2,
+        nilai: 93,
+        status: 'Lulus',
+      },
+      {
+        id: 'res-default-3',
+        timestamp: '19/10/2026, 08:40:20',
+        nama: 'I Komang Bagus Sasmita',
+        noAbsen: '03',
+        kelas: CONFIG.KELAS,
+        tglLahir: '05 Januari 2014',
+        benar: 19,
+        salah: 11,
+        nilai: 63,
+        status: 'Belum Lulus',
+      },
+      {
+        id: 'res-default-4',
+        timestamp: '19/10/2026, 08:42:15',
+        nama: 'Ni Ketut Ayu Wardani',
+        noAbsen: '04',
+        kelas: CONFIG.KELAS,
+        tglLahir: '18 Oktober 2014',
+        benar: 24,
+        salah: 6,
+        nilai: 80,
+        status: 'Lulus',
+      },
+      {
+        id: 'res-default-5',
+        timestamp: '19/10/2026, 08:45:00',
+        nama: 'I Wayan Aditya Putra',
+        noAbsen: '05',
+        kelas: CONFIG.KELAS,
+        tglLahir: '30 Maret 2014',
+        benar: 22,
+        salah: 8,
+        nilai: 73,
+        status: 'Lulus',
+      },
+      {
+        id: 'res-default-6',
+        timestamp: '19/10/2026, 08:48:30',
+        nama: 'Ni Putu Ratih Anjani',
+        noAbsen: '06',
+        kelas: CONFIG.KELAS,
+        tglLahir: '09 Juli 2014',
+        benar: 29,
+        salah: 1,
+        nilai: 97,
+        status: 'Lulus',
+      },
+      {
+        id: 'res-default-7',
+        timestamp: '19/10/2026, 08:51:10',
+        nama: 'I Made Gede Danendra',
+        noAbsen: '07',
+        kelas: CONFIG.KELAS,
+        tglLahir: '11 Desember 2013',
+        benar: 18,
+        salah: 12,
+        nilai: 60,
+        status: 'Belum Lulus',
+      },
+      {
+        id: 'res-default-8',
+        timestamp: '19/10/2026, 08:53:40',
+        nama: 'Ni Kadek Citra Lestari',
+        noAbsen: '08',
+        kelas: CONFIG.KELAS,
+        tglLahir: '25 Februari 2014',
+        benar: 25,
+        salah: 5,
+        nilai: 83,
+        status: 'Lulus',
+      },
+      {
+        id: 'res-default-9',
+        timestamp: '19/10/2026, 08:56:05',
+        nama: 'I Komang Yoga Mahendra',
+        noAbsen: '09',
+        kelas: CONFIG.KELAS,
+        tglLahir: '16 September 2014',
+        benar: 27,
+        salah: 3,
+        nilai: 90,
+        status: 'Lulus',
+      },
+      {
+        id: 'res-default-10',
+        timestamp: '19/10/2026, 08:58:22',
+        nama: 'Ni Ketut Desi Kurnia',
+        noAbsen: '10',
+        kelas: CONFIG.KELAS,
+        tglLahir: '04 Juni 2014',
+        benar: 20,
+        salah: 10,
+        nilai: 67,
+        status: 'Belum Lulus',
+      },
+    ];
+
+    try {
+      localStorage.setItem(STORAGE_LOCAL_RESULTS_KEY, JSON.stringify(defaultData));
+    } catch {
+      // ignore
+    }
+
+    return defaultData;
   },
+
 
   /**
    * Menyimpan hasil tes ke penyimpanan lokal (Zero Data Loss)
@@ -409,6 +544,65 @@ export const gasService = {
   },
 
   /**
+   * Mengosongkan data di penyimpanan lokal perangkat
+   */
+  clearAllLocalExamResults(): void {
+    try {
+      localStorage.setItem(STORAGE_LOCAL_RESULTS_KEY, JSON.stringify([]));
+    } catch (e) {
+      console.warn('Gagal mengosongkan data lokal:', e);
+    }
+  },
+
+  /**
+   * Menghapus SEMUA hasil tes siswa (di penyimpanan lokal dan di remote Google Spreadsheet jika terhubung)
+   */
+  async clearAllExamResults(): Promise<{ success: boolean; clearedRemote: boolean; message: string }> {
+    // 1. Kosongkan penyimpanan lokal segera
+    this.clearAllLocalExamResults();
+
+    const url = this.getGasUrl();
+    if (!url || !url.startsWith('http')) {
+      return {
+        success: true,
+        clearedRemote: false,
+        message: 'Seluruh data nilai di penyimpanan lokal perangkat berhasil dibersihkan.',
+      };
+    }
+
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'text/plain;charset=utf-8',
+        },
+        body: JSON.stringify({ action: 'clearAll' }),
+      });
+
+      if (response.ok) {
+        return {
+          success: true,
+          clearedRemote: true,
+          message: 'Seluruh data nilai di Google Spreadsheet dan perangkat lokal berhasil dihapus.',
+        };
+      } else {
+        return {
+          success: true,
+          clearedRemote: false,
+          message: 'Data nilai lokal berhasil dibersihkan. Server Spreadsheet merespons dengan kendala.',
+        };
+      }
+    } catch (err: any) {
+      console.warn('Gagal menghapus di remote Google Apps Script secara massal:', err);
+      return {
+        success: true,
+        clearedRemote: false,
+        message: 'Data lokal berhasil dihapus. Google Spreadsheet tidak dapat diakses saat ini (koneksi offline/URL tidak valid).',
+      };
+    }
+  },
+
+  /**
    * Sinkronisasi seluruh data lokal yang belum masuk ke Google Apps Script
    */
   async syncAllLocalToCloud(): Promise<{ total: number; success: number }> {
@@ -520,6 +714,18 @@ function doPost(e) {
       }
       return ContentService.createTextOutput(JSON.stringify({ success: false, message: "Data tidak ditemukan" }))
         .setMimeType(ContentService.MimeType.JSON);
+    }
+    
+    // Fitur Hapus Seluruh Data Siswa (Mempertahankan Baris Header Kolom ke-1)
+    if (contents.action === "clearAll" || contents.action === "deleteAll") {
+      var lastRow = sheet.getLastRow();
+      if (lastRow > 1) {
+        sheet.deleteRows(2, lastRow - 1);
+      }
+      return ContentService.createTextOutput(JSON.stringify({ 
+        success: true, 
+        message: "Seluruh data siswa berhasil dihapus dari Spreadsheet (header kolom tetap tersimpan)" 
+      })).setMimeType(ContentService.MimeType.JSON);
     }
     
     // Fitur Tambah / Simpan Hasil Tes Siswa

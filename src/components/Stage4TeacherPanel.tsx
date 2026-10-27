@@ -6,12 +6,15 @@ import {
   downloadStudentResultPDF,
   downloadExamQuestionsPDF,
   downloadResultsRecapPDF,
+  downloadKisiKisiPDF,
   exportResultsToCSV,
 } from '../utils/pdfGenerator';
 import { QuestionEditorModal } from './QuestionEditorModal';
 import { GasGuideModal } from './GasGuideModal';
 import { GasSettingsModal } from './GasSettingsModal';
 import { StudentDetailModal } from './StudentDetailModal';
+import { MatriksKisiKisiTab } from './MatriksKisiKisiTab';
+import { MatriksAnalisisButirTab } from './MatriksAnalisisButirTab';
 import {
   Users,
   CheckCircle2,
@@ -39,6 +42,8 @@ import {
   Settings,
   Link,
   RotateCcw,
+  BarChart3,
+  FileText,
 } from 'lucide-react';
 
 interface Stage4TeacherPanelProps {
@@ -62,7 +67,7 @@ export const Stage4TeacherPanel: React.FC<Stage4TeacherPanelProps> = ({
   const [apiError, setApiError] = useState<string | null>(null);
 
   // Tab aktif di panel guru
-  const [activeTab, setActiveTab] = useState<'rekap' | 'soal'>('rekap');
+  const [activeTab, setActiveTab] = useState<'rekap' | 'analisis' | 'kisi-kisi' | 'soal'>('rekap');
 
   // Filter & Search
   const [searchQuery, setSearchQuery] = useState('');
@@ -85,6 +90,15 @@ export const Stage4TeacherPanel: React.FC<Stage4TeacherPanelProps> = ({
   const [showGasSettings, setShowGasSettings] = useState(false);
   const [studentToDelete, setStudentToDelete] = useState<ExamResult | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Modal & state hapus seluruh data siswa
+  const [showDeleteAllModal, setShowDeleteAllModal] = useState(false);
+  const [confirmDeleteInput, setConfirmDeleteInput] = useState('');
+  const [isDeletingAll, setIsDeletingAll] = useState(false);
+  const [deleteAllNotification, setDeleteAllNotification] = useState<{
+    type: 'success' | 'error';
+    message: string;
+  } | null>(null);
 
   // Ambil data dari Google Apps Script saat komponen dimuat
   const loadDataFromGAS = async () => {
@@ -109,7 +123,7 @@ export const Stage4TeacherPanel: React.FC<Stage4TeacherPanelProps> = ({
     loadDataFromGAS();
   }, []);
 
-  // Handler Hapus Data Siswa
+  // Handler Hapus Data Siswa Satuan
   const handleConfirmDelete = async () => {
     if (!studentToDelete) return;
     setIsDeleting(true);
@@ -131,6 +145,32 @@ export const Stage4TeacherPanel: React.FC<Stage4TeacherPanelProps> = ({
       setResults((prev) => prev.filter((r) => r.id !== studentToDelete.id));
       setIsDeleting(false);
       setStudentToDelete(null);
+    }
+  };
+
+  // Handler Hapus SELURUH Data Siswa Sekaligus
+  const handleConfirmDeleteAll = async () => {
+    setIsDeletingAll(true);
+    try {
+      const res = await gasService.clearAllExamResults();
+      setResults([]);
+      setIsDeletingAll(false);
+      setShowDeleteAllModal(false);
+      setConfirmDeleteInput('');
+      setDeleteAllNotification({
+        type: 'success',
+        message: res.message || 'Seluruh data nilai siswa berhasil dihapus.',
+      });
+      setTimeout(() => setDeleteAllNotification(null), 6000);
+    } catch (err: any) {
+      setIsDeletingAll(false);
+      setResults([]);
+      setShowDeleteAllModal(false);
+      setDeleteAllNotification({
+        type: 'error',
+        message: 'Data lokal dikosongkan. Namun terjadi kendala pada sinkronisasi remote Spreadsheet.',
+      });
+      setTimeout(() => setDeleteAllNotification(null), 6000);
     }
   };
 
@@ -252,6 +292,17 @@ export const Stage4TeacherPanel: React.FC<Stage4TeacherPanelProps> = ({
               <span>Panduan Skrip GAS</span>
             </button>
 
+            {/* Tombol Download Kisi-Kisi PDF */}
+            <button
+              id="btn-export-kisi-kisi-pdf"
+              onClick={() => downloadKisiKisiPDF(questions)}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-xl transition-colors border border-indigo-200 cursor-pointer"
+              title="Unduh Matriks Kisi-Kisi Penulisan Soal (PDF Resmi Kedinasan)"
+            >
+              <FileText className="w-3.5 h-3.5 text-indigo-600" />
+              <span>Kisi-Kisi (PDF)</span>
+            </button>
+
             {/* Tombol Download Rekap PDF */}
             <button
               id="btn-export-rekap-pdf"
@@ -278,6 +329,21 @@ export const Stage4TeacherPanel: React.FC<Stage4TeacherPanelProps> = ({
             >
               <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-700" />
               <span>Download Rekap (Excel/CSV)</span>
+            </button>
+
+            {/* Tombol Hapus Semua Data Siswa Sekaligus */}
+            <button
+              id="btn-delete-all-results-header"
+              onClick={() => {
+                setConfirmDeleteInput('');
+                setShowDeleteAllModal(true);
+              }}
+              disabled={results.length === 0 || isLoading}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-red-700 bg-red-50 hover:bg-red-100 rounded-xl transition-colors border border-red-200 disabled:opacity-40 cursor-pointer shadow-2xs"
+              title="Hapus seluruh data nilai siswa sekaligus (lokal & spreadsheet)"
+            >
+              <Trash2 className="w-3.5 h-3.5 text-red-600" />
+              <span>Hapus Semua Data</span>
             </button>
 
             {/* Tombol Refresh Data */}
@@ -368,26 +434,60 @@ export const Stage4TeacherPanel: React.FC<Stage4TeacherPanelProps> = ({
         </div>
       </div>
 
-      {/* Navigasi Tab: Rekap Nilai Siswa vs Bank Soal */}
-      <div className="flex border-b border-slate-200 bg-white rounded-t-2xl px-6 pt-3 gap-6 text-xs sm:text-sm font-bold">
+      {/* Navigasi Tab 4 Menu Utama Panel Guru */}
+      <div className="flex border-b border-slate-200 bg-white rounded-t-2xl px-4 sm:px-6 pt-3 gap-2 sm:gap-6 text-xs sm:text-sm font-bold overflow-x-auto scrollbar-none">
+        {/* Tab 1: Rekap Nilai Siswa */}
         <button
           onClick={() => setActiveTab('rekap')}
-          className={`pb-3 border-b-2 transition-all flex items-center gap-2 cursor-pointer ${
+          className={`pb-3 border-b-2 transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap ${
             activeTab === 'rekap'
               ? 'border-blue-600 text-blue-700'
               : 'border-transparent text-slate-500 hover:text-slate-800'
           }`}
         >
           <FileSpreadsheet className="w-4 h-4" />
-          <span>Data Nilai Siswa (Google Spreadsheet)</span>
+          <span>Data Nilai Siswa</span>
           <span className="ml-1 text-xs px-2 py-0.5 rounded-full bg-slate-100 text-slate-700">
             {results.length}
           </span>
         </button>
 
+        {/* Tab 2: Analisis Butir Soal per Siswa */}
+        <button
+          onClick={() => setActiveTab('analisis')}
+          className={`pb-3 border-b-2 transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap ${
+            activeTab === 'analisis'
+              ? 'border-blue-600 text-blue-700'
+              : 'border-transparent text-slate-500 hover:text-slate-800'
+          }`}
+        >
+          <BarChart3 className="w-4 h-4" />
+          <span>Analisis Butir Soal per Siswa</span>
+          <span className="ml-1 text-xs px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold">
+            Matriks Respon
+          </span>
+        </button>
+
+        {/* Tab 3: Matriks Kisi-Kisi Penulisan Soal */}
+        <button
+          onClick={() => setActiveTab('kisi-kisi')}
+          className={`pb-3 border-b-2 transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap ${
+            activeTab === 'kisi-kisi'
+              ? 'border-blue-600 text-blue-700'
+              : 'border-transparent text-slate-500 hover:text-slate-800'
+          }`}
+        >
+          <FileText className="w-4 h-4" />
+          <span>Kisi-Kisi Penulisan Soal</span>
+          <span className="ml-1 text-xs px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-800 font-bold">
+            Kurikulum Merdeka
+          </span>
+        </button>
+
+        {/* Tab 4: Bank Soal & Pembahasan */}
         <button
           onClick={() => setActiveTab('soal')}
-          className={`pb-3 border-b-2 transition-all flex items-center gap-2 cursor-pointer ${
+          className={`pb-3 border-b-2 transition-all flex items-center gap-2 cursor-pointer whitespace-nowrap ${
             activeTab === 'soal'
               ? 'border-blue-600 text-blue-700'
               : 'border-transparent text-slate-500 hover:text-slate-800'
@@ -400,6 +500,7 @@ export const Stage4TeacherPanel: React.FC<Stage4TeacherPanelProps> = ({
           </span>
         </button>
       </div>
+
 
       {/* TAB 1: DATA NILAI SISWA */}
       {activeTab === 'rekap' && (
@@ -494,6 +595,33 @@ export const Stage4TeacherPanel: React.FC<Stage4TeacherPanelProps> = ({
             </div>
           )}
 
+          {/* Notifikasi Hasil Penghapusan Massal */}
+          {deleteAllNotification && (
+            <div
+              className={`p-3.5 rounded-xl border text-xs flex items-center justify-between gap-3 animate-in fade-in duration-200 ${
+                deleteAllNotification.type === 'success'
+                  ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
+                  : 'bg-amber-50 border-amber-200 text-amber-900'
+              }`}
+            >
+              <div className="flex items-center gap-2.5">
+                <CheckCircle2
+                  className={`w-4 h-4 shrink-0 ${
+                    deleteAllNotification.type === 'success' ? 'text-emerald-600' : 'text-amber-600'
+                  }`}
+                />
+                <span className="font-semibold">{deleteAllNotification.message}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setDeleteAllNotification(null)}
+                className="text-slate-400 hover:text-slate-600 font-bold px-1.5 cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+          )}
+
           {/* Baris Informasi Jumlah Data & Tombol Cepat Ekspor */}
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pt-1 pb-1">
             <div className="text-xs text-slate-600 font-medium flex items-center gap-2">
@@ -504,7 +632,7 @@ export const Stage4TeacherPanel: React.FC<Stage4TeacherPanelProps> = ({
               </span>
             </div>
 
-            <div className="flex items-center gap-2 w-full sm:w-auto">
+            <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
               <button
                 type="button"
                 id="btn-quick-export-pdf"
@@ -535,6 +663,21 @@ export const Stage4TeacherPanel: React.FC<Stage4TeacherPanelProps> = ({
               >
                 <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
                 <span>Unduh Excel/CSV</span>
+              </button>
+
+              <button
+                type="button"
+                id="btn-quick-delete-all"
+                onClick={() => {
+                  setConfirmDeleteInput('');
+                  setShowDeleteAllModal(true);
+                }}
+                disabled={results.length === 0}
+                className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-3.5 py-1.5 text-xs font-bold text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 rounded-lg transition-colors disabled:opacity-40 cursor-pointer shadow-2xs"
+                title="Hapus seluruh data nilai siswa sekaligus (lokal & spreadsheet)"
+              >
+                <Trash2 className="w-3.5 h-3.5 text-red-600" />
+                <span>Hapus Semua ({results.length})</span>
               </button>
             </div>
           </div>
@@ -741,8 +884,23 @@ export const Stage4TeacherPanel: React.FC<Stage4TeacherPanelProps> = ({
         </div>
       )}
 
-      {/* TAB 2: BANK SOAL & PEMBAHASAN */}
+      {/* TAB 2: ANALISIS BUTIR SOAL PER SISWA */}
+      {activeTab === 'analisis' && (
+        <div className="bg-white rounded-b-2xl p-6 shadow-xs border border-t-0 border-slate-200">
+          <MatriksAnalisisButirTab results={results} questions={questions} />
+        </div>
+      )}
+
+      {/* TAB 3: MATRIKS KISI-KISI PENULISAN SOAL */}
+      {activeTab === 'kisi-kisi' && (
+        <div className="bg-white rounded-b-2xl p-6 shadow-xs border border-t-0 border-slate-200">
+          <MatriksKisiKisiTab questions={questions} />
+        </div>
+      )}
+
+      {/* TAB 4: BANK SOAL & PEMBAHASAN */}
       {activeTab === 'soal' && (
+
         <div className="bg-white rounded-b-2xl p-6 shadow-xs border border-t-0 border-slate-200 space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-slate-100 gap-3">
             <div>
@@ -918,7 +1076,7 @@ export const Stage4TeacherPanel: React.FC<Stage4TeacherPanelProps> = ({
         onDataSynced={loadDataFromGAS}
       />
 
-      {/* Modal Konfirmasi Hapus Data Siswa */}
+      {/* Modal Konfirmasi Hapus Data Siswa Satuan */}
       {studentToDelete && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200">
           <div className="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl border border-slate-200">
@@ -960,6 +1118,100 @@ export const Stage4TeacherPanel: React.FC<Stage4TeacherPanelProps> = ({
                   </>
                 ) : (
                   <span>Ya, Hapus Data</span>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Konfirmasi Hapus SELURUH Data Nilai Siswa */}
+      {showDeleteAllModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-red-200 space-y-4">
+            <div className="flex items-start gap-3.5">
+              <div className="w-12 h-12 rounded-2xl bg-red-100 flex items-center justify-center text-red-600 shrink-0 border border-red-200">
+                <Trash2 className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-slate-900">Hapus Seluruh Data Nilai Siswa</h3>
+                <p className="text-xs text-red-600 font-semibold">Tindakan ini permanen untuk semua siswa</p>
+              </div>
+            </div>
+
+            <div className="p-3.5 bg-red-50/80 rounded-xl border border-red-200 space-y-2.5 text-xs text-slate-700">
+              <p className="font-bold text-red-950">
+                Anda akan menghapus sekaligus seluruh <span className="underline font-black">{results.length} data nilai siswa</span>.
+              </p>
+              <div className="space-y-1.5 pt-1 border-t border-red-200/60">
+                <p className="font-bold text-slate-900 text-[11px] uppercase tracking-wider">
+                  Pengaruh terhadap Google Spreadsheet:
+                </p>
+                <div className="space-y-1 text-[11px] text-slate-700">
+                  <div className="flex items-start gap-1.5">
+                    <span className="text-red-600 font-bold">•</span>
+                    <span>
+                      <strong>Ya, Terhapus di Spreadsheet:</strong> Jika URL Spreadsheet terhubung, seluruh baris data siswa (mulai baris ke-2 hingga akhir) akan dihapus.
+                    </span>
+                  </div>
+                  <div className="flex items-start gap-1.5">
+                    <span className="text-emerald-600 font-bold">•</span>
+                    <span>
+                      <strong>Header Kolom Aman:</strong> Baris ke-1 (judul/header kolom) <strong>TETAP AMAN</strong> dan tidak dihapus, sehingga spreadsheet tetap siap dipakai untuk ujian baru.
+                    </span>
+                  </div>
+                  <div className="flex items-start gap-1.5">
+                    <span className="text-blue-600 font-bold">•</span>
+                    <span>
+                      <strong>Lokal Bersih:</strong> Seluruh riwayat hasil ujian di penyimpanan lokal browser juga akan dikosongkan.
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-800 mb-1">
+                Ketik kata <span className="text-red-600 font-black tracking-wide">HAPUS</span> untuk konfirmasi:
+              </label>
+              <input
+                type="text"
+                value={confirmDeleteInput}
+                onChange={(e) => setConfirmDeleteInput(e.target.value)}
+                placeholder="Ketik HAPUS di sini..."
+                className="w-full px-3 py-2 text-xs font-bold uppercase rounded-xl border border-slate-300 focus:border-red-500 focus:ring-2 focus:ring-red-200 focus:outline-none placeholder:normal-case placeholder:font-normal"
+                autoFocus
+              />
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                disabled={isDeletingAll}
+                onClick={() => {
+                  setShowDeleteAllModal(false);
+                  setConfirmDeleteInput('');
+                }}
+                className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                disabled={isDeletingAll || confirmDeleteInput.trim().toUpperCase() !== 'HAPUS'}
+                onClick={handleConfirmDeleteAll}
+                className="px-4 py-2 text-xs font-bold text-white bg-red-600 hover:bg-red-700 rounded-xl transition-colors shadow-xs flex items-center gap-1.5 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                {isDeletingAll ? (
+                  <>
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                    <span>Menghapus Seluruh Data...</span>
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Ya, Hapus Semua ({results.length})</span>
+                  </>
                 )}
               </button>
             </div>

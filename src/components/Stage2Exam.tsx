@@ -7,6 +7,7 @@ import {
   AnswerValue,
   ExamResult,
   OptionItem,
+  StudentItemResponse,
 } from '../types';
 import { gasService } from '../services/gasService';
 import { downloadExamQuestionsPDF } from '../utils/pdfGenerator';
@@ -178,6 +179,7 @@ export const Stage2Exam: React.FC<Stage2ExamProps> = ({
   const calculateResult = (): ExamResult => {
     let totalScore = 0;
     let benarCount = 0;
+    const itemResponses: Record<number, StudentItemResponse> = {};
 
     shuffledQuestions.forEach((sq, idx) => {
       const userAns = answers[idx];
@@ -187,10 +189,19 @@ export const Stage2Exam: React.FC<Stage2ExamProps> = ({
       if (sq.type === 'pg') {
         // Cocokkan teks opsi yang dipilih dengan teks opsi dari kunci jawaban original
         const correctOpt = origQ.options?.find((o) => o.id === origQ.correctAnswer);
-        if (correctOpt && userAns === correctOpt.text) {
+        const isCorrect = Boolean(correctOpt && userAns === correctOpt.text);
+        if (isCorrect) {
           totalScore += 1;
           benarCount += 1;
         }
+        itemResponses[origQ.id] = {
+          questionId: origQ.id,
+          isCorrect,
+          score: isCorrect ? 1 : 0,
+          maxScore: 1,
+          status: isCorrect ? 'benar' : 'salah',
+          userAnswerText: typeof userAns === 'string' ? userAns : '-',
+        };
       } else if (sq.type === 'pgk') {
         // Jawaban benar bisa lebih dari satu
         const correctKeys = Array.isArray(origQ.correctAnswer) ? origQ.correctAnswer : [];
@@ -203,9 +214,39 @@ export const Stage2Exam: React.FC<Stage2ExamProps> = ({
           correctTexts.length === userSelected.length &&
           correctTexts.every((txt) => userSelected.includes(txt));
 
+        const matchCount = userSelected.filter((u) => correctTexts.includes(u)).length;
+
         if (isMatch) {
           totalScore += 1;
           benarCount += 1;
+          itemResponses[origQ.id] = {
+            questionId: origQ.id,
+            isCorrect: true,
+            score: 1,
+            maxScore: 1,
+            status: 'benar',
+            userAnswerText: userSelected.join(', '),
+          };
+        } else if (matchCount > 0) {
+          const partialScore = Math.round((matchCount / Math.max(1, correctTexts.length)) * 100) / 100;
+          totalScore += partialScore;
+          itemResponses[origQ.id] = {
+            questionId: origQ.id,
+            isCorrect: false,
+            score: partialScore,
+            maxScore: 1,
+            status: 'sebagian',
+            userAnswerText: userSelected.join(', '),
+          };
+        } else {
+          itemResponses[origQ.id] = {
+            questionId: origQ.id,
+            isCorrect: false,
+            score: 0,
+            maxScore: 1,
+            status: 'salah',
+            userAnswerText: userSelected.length > 0 ? userSelected.join(', ') : 'Kosong',
+          };
         }
       } else if (sq.type === 'pgk_kategori') {
         // 3 pernyataan Benar/Salah
@@ -222,9 +263,35 @@ export const Stage2Exam: React.FC<Stage2ExamProps> = ({
         if (statementsCorrect === statements.length) {
           totalScore += 1;
           benarCount += 1;
-        } else {
+          itemResponses[origQ.id] = {
+            questionId: origQ.id,
+            isCorrect: true,
+            score: 1,
+            maxScore: 1,
+            status: 'benar',
+            userAnswerText: 'Semua Benar',
+          };
+        } else if (statementsCorrect > 0) {
           // Memberi bobot proporsional untuk nilai akhir
-          totalScore += statementsCorrect / statements.length;
+          const partial = Math.round((statementsCorrect / statements.length) * 100) / 100;
+          totalScore += partial;
+          itemResponses[origQ.id] = {
+            questionId: origQ.id,
+            isCorrect: false,
+            score: partial,
+            maxScore: 1,
+            status: 'sebagian',
+            userAnswerText: `${statementsCorrect}/${statements.length} Pernyataan Benar`,
+          };
+        } else {
+          itemResponses[origQ.id] = {
+            questionId: origQ.id,
+            isCorrect: false,
+            score: 0,
+            maxScore: 1,
+            status: 'salah',
+            userAnswerText: 'Salah Semua',
+          };
         }
       }
     });
@@ -250,8 +317,10 @@ export const Stage2Exam: React.FC<Stage2ExamProps> = ({
       nilai: finalScore,
       status,
       detailJawaban: answers,
+      itemResponses,
     };
   };
+
 
   // Proses Kirim Jawaban ke Google Apps Script
   const handleConfirmSubmit = async () => {

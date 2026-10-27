@@ -1,6 +1,8 @@
 import { jsPDF } from 'jspdf';
 import { CONFIG } from '../config';
 import { ExamResult, Question } from '../types';
+import { getQuestionBlueprint, getBlueprintStatistics, formatCorrectAnswer } from '../data/blueprintData';
+import { computeItemAnalysis } from './itemAnalysisHelper';
 
 /**
  * Format tanggal dalam bahasa Indonesia
@@ -647,3 +649,579 @@ export function downloadResultsRecapPDF(results: ExamResult[]): void {
 
   doc.save(`Rekap_Nilai_Tes_Sumatif_Matematika_Kelas_${CONFIG.KELAS}.pdf`);
 }
+
+/**
+ * 5. Download Matriks Kisi-Kisi Penulisan Soal (Landscape A4 Resmi Kedinasan)
+ */
+export function downloadKisiKisiPDF(questions: Question[]): void {
+  const doc = new jsPDF({
+    orientation: 'landscape',
+    unit: 'mm',
+    format: 'a4',
+  });
+
+  const pageWidth = doc.internal.pageSize.getWidth(); // 297mm
+  const pageHeight = doc.internal.pageSize.getHeight(); // 210mm
+  const marginLeft = 14;
+  const marginRight = 14;
+  const contentWidth = pageWidth - marginLeft - marginRight; // 269mm
+
+  const stats = getBlueprintStatistics(questions);
+
+  let y = 14;
+
+  // --- KOP RESMI SEKOLAH ---
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(10);
+  doc.text('PEMERINTAH KABUPATEN JEMBRANA', pageWidth / 2, y, { align: 'center' });
+  y += 4.5;
+  doc.text('DINAS PENDIDIKAN KEPEMUDAAN DAN OLAHRAGA', pageWidth / 2, y, { align: 'center' });
+  y += 5.5;
+  doc.setFontSize(13);
+  doc.text(CONFIG.SEKOLAH, pageWidth / 2, y, { align: 'center' });
+  y += 4.5;
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8.5);
+  doc.text(CONFIG.ALAMAT_SEKOLAH, pageWidth / 2, y, { align: 'center' });
+  y += 2.5;
+
+  // Garis Pembatas Kop
+  doc.setLineWidth(0.8);
+  doc.line(marginLeft, y, pageWidth - marginRight, y);
+  doc.setLineWidth(0.2);
+  doc.line(marginLeft, y + 0.8, pageWidth - marginRight, y + 0.8);
+  y += 6;
+
+  // --- JUDUL DOKUMEN ---
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(11);
+  doc.text('MATRIKS KISI-KISI PENULISAN SOAL TES SUMATIF', pageWidth / 2, y, { align: 'center' });
+  y += 4.5;
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8.5);
+  doc.text(
+    `Kurikulum Merdeka • Mata Pelajaran: ${CONFIG.MATA_PELAJARAN} • Fase C / Kelas ${CONFIG.KELAS} • Tahun Ajaran 2026/2027`,
+    pageWidth / 2,
+    y,
+    { align: 'center' }
+  );
+  y += 6;
+
+  // --- RINGKASAN DISTRIBUSI LEVEL KOGNITIF & BENTUK SOAL ---
+  doc.setDrawColor(203, 213, 225);
+  doc.setFillColor(248, 250, 252);
+  doc.roundedRect(marginLeft, y, contentWidth, 10, 1.5, 1.5, 'FD');
+
+  const l1Count = stats.levelDistribution.find((l) => l.level === 'L1')?.count || 0;
+  const l2Count = stats.levelDistribution.find((l) => l.level === 'L2')?.count || 0;
+  const l3Count = stats.levelDistribution.find((l) => l.level === 'L3')?.count || 0;
+
+  const pgCount = stats.typeDistribution.find((t) => t.type === 'pg')?.count || 0;
+  const pgkCount = stats.typeDistribution.find((t) => t.type === 'pgk')?.count || 0;
+  const catCount = stats.typeDistribution.find((t) => t.type === 'pgk_kategori')?.count || 0;
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7.5);
+  doc.setTextColor(51, 65, 85);
+
+  const summaryText =
+    `Total: ${stats.total} Butir Soal  |  Level Kognitif: L1 (Pemahaman)=${l1Count}, L2 (Aplikasi)=${l2Count}, L3 (Penalaran HOTS)=${l3Count}  |  Bentuk Soal: Pilihan Ganda (PG)=${pgCount}, PG Kompleks (PGK)=${pgkCount}, Benar/Salah (PGK Kategori)=${catCount}`;
+  doc.text(summaryText, pageWidth / 2, y + 6.2, { align: 'center' });
+
+  y += 13;
+  doc.setTextColor(0, 0, 0);
+
+  // Definisi Kolom Tabel Kisi-Kisi (Total: 269mm)
+  const cols = [
+    { key: 'no', title: 'No', width: 9, align: 'center' as const },
+    { key: 'elemen', title: 'Elemen / CP', width: 30, align: 'left' as const },
+    { key: 'tp', title: 'Tujuan Pembelajaran (TP)', width: 62, align: 'left' as const },
+    { key: 'materi', title: 'Materi Pokok', width: 33, align: 'left' as const },
+    { key: 'indikator', title: 'Indikator Soal', width: 73, align: 'left' as const },
+    { key: 'level', title: 'Level', width: 14, align: 'center' as const },
+    { key: 'bentuk', title: 'Bentuk', width: 28, align: 'center' as const },
+    { key: 'kunci', title: 'Kunci / Bobot', width: 20, align: 'center' as const },
+  ];
+
+  const drawTableHeader = (curY: number) => {
+    doc.setFillColor(30, 58, 138); // Dark blue
+    doc.rect(marginLeft, curY, contentWidth, 7, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7.8);
+
+    let curX = marginLeft;
+    cols.forEach((col) => {
+      const textX = col.align === 'center' ? curX + col.width / 2 : curX + 2;
+      doc.text(col.title, textX, curY + 4.8, { align: col.align });
+      curX += col.width;
+    });
+    doc.setTextColor(0, 0, 0);
+  };
+
+  drawTableHeader(y);
+  y += 7;
+
+  // Render Rows
+  stats.blueprints.forEach((bp, idx) => {
+    // Estimasi tinggi row berdasarkan pembagian teks
+    const tpLines = doc.splitTextToSize(bp.tujuanPembelajaran, cols[2].width - 3);
+    const indLines = doc.splitTextToSize(bp.indikatorSoal, cols[4].width - 3);
+    const matLines = doc.splitTextToSize(bp.materiPokok, cols[3].width - 3);
+    const maxLines = Math.max(tpLines.length, indLines.length, matLines.length, 1);
+    const rowHeight = Math.max(7, maxLines * 3.4 + 2);
+
+    // Cek batas halaman
+    if (y + rowHeight > pageHeight - 35) {
+      doc.addPage();
+      y = 14;
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(8);
+      doc.setTextColor(71, 85, 105);
+      doc.text('Lanjutan Matriks Kisi-Kisi Penulisan Soal:', marginLeft, y - 2);
+      drawTableHeader(y);
+      y += 7;
+    }
+
+    const isEven = idx % 2 === 0;
+    doc.setFillColor(isEven ? 255 : 248, isEven ? 255 : 250, isEven ? 255 : 252);
+    doc.rect(marginLeft, y, contentWidth, rowHeight, 'F');
+    doc.setDrawColor(226, 232, 240);
+    doc.rect(marginLeft, y, contentWidth, rowHeight, 'S');
+
+    let curX = marginLeft;
+    cols.forEach((col) => {
+      doc.setDrawColor(226, 232, 240);
+      doc.line(curX, y, curX, y + rowHeight);
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(7.2);
+      doc.setTextColor(30, 41, 59);
+
+      if (col.key === 'no') {
+        doc.setFont('helvetica', 'bold');
+        doc.text(String(bp.noSoal), curX + col.width / 2, y + 4.5, { align: 'center' });
+      } else if (col.key === 'elemen') {
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(29, 78, 216);
+        doc.text(bp.elemen, curX + 2, y + 4.5);
+      } else if (col.key === 'tp') {
+        doc.text(tpLines, curX + 2, y + 3.8);
+      } else if (col.key === 'materi') {
+        doc.text(matLines, curX + 2, y + 3.8);
+      } else if (col.key === 'indikator') {
+        doc.text(indLines, curX + 2, y + 3.8);
+      } else if (col.key === 'level') {
+        doc.setFont('helvetica', 'bold');
+        if (bp.levelKognitif === 'L1') doc.setTextColor(16, 185, 129);
+        else if (bp.levelKognitif === 'L2') doc.setTextColor(37, 99, 235);
+        else doc.setTextColor(217, 119, 6);
+        doc.text(bp.levelKognitif, curX + col.width / 2, y + 4.5, { align: 'center' });
+      } else if (col.key === 'bentuk') {
+        const shortBentuk =
+          bp.bentukSoal.includes('Kategori')
+            ? 'PGK Kategori (B/S)'
+            : bp.bentukSoal.includes('Kompleks')
+            ? 'PGK (Kompleks)'
+            : 'Pilihan Ganda';
+        doc.text(shortBentuk, curX + col.width / 2, y + 4.5, { align: 'center' });
+      } else if (col.key === 'kunci') {
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(15, 23, 42);
+        doc.text(bp.kunciJawaban, curX + col.width / 2, y + 3.8, { align: 'center' });
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(6.5);
+        doc.setTextColor(100, 116, 139);
+        doc.text(`Skor: ${bp.bobotSkor}`, curX + col.width / 2, y + 7, { align: 'center' });
+      }
+
+      curX += col.width;
+    });
+
+    y += rowHeight;
+  });
+
+  // Cek apakah muat untuk tanda tangan (~32mm)
+  if (y + 35 > pageHeight - 15) {
+    doc.addPage();
+    y = 18;
+  } else {
+    y += 8;
+  }
+
+  // --- TANDA TANGAN (KEPALA SEKOLAH & GURU PENGAMPU) ---
+  const tglStr = formatIndonesianDate();
+  const colLeftX = marginLeft + 14;
+  const colRightX = pageWidth - marginRight - 65;
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8.5);
+  doc.setTextColor(30, 41, 59);
+
+  // Kiri: Kepala Sekolah
+  doc.text('Mengetahui,', colLeftX, y);
+  doc.text('Kepala Sekolah,', colLeftX, y + 4.5);
+
+  // Kanan: Guru Pengampu
+  doc.text(`Jembrana, ${tglStr}`, colRightX, y);
+  doc.text('Guru Mata Pelajaran,', colRightX, y + 4.5);
+
+  const sigLineY = y + 21;
+  // Nama & NIP Kepala Sekolah
+  doc.setFont('helvetica', 'bold');
+  doc.text(CONFIG.KEPALA_SEKOLAH, colLeftX, sigLineY);
+  doc.line(colLeftX, sigLineY + 1, colLeftX + 55, sigLineY + 1);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.text(`NIP. ${CONFIG.NIP_KEPALA_SEKOLAH}`, colLeftX, sigLineY + 5);
+
+  // Nama & NIP Guru
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8.5);
+  doc.text(CONFIG.GURU, colRightX, sigLineY);
+  doc.line(colRightX, sigLineY + 1, colRightX + 55, sigLineY + 1);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.text(`NIP. ${CONFIG.NIP_GURU}`, colRightX, sigLineY + 5);
+
+  // --- FOOTER DI SETIAP HALAMAN ---
+  const totalPages = doc.getNumberOfPages();
+  for (let i = 1; i <= totalPages; i++) {
+    doc.setPage(i);
+    doc.setFont('helvetica', 'italic');
+    doc.setFontSize(7);
+    doc.setTextColor(148, 163, 184);
+    doc.text(
+      `Dokumen Kisi-Kisi Soal Kurikulum Merdeka • ${CONFIG.SEKOLAH} • Dicetak otomatis sistem`,
+      marginLeft,
+      pageHeight - 6
+    );
+    doc.text(`Halaman ${i} dari ${totalPages}`, pageWidth - marginRight, pageHeight - 6, {
+      align: 'right',
+    });
+  }
+
+  doc.save(`Kisi_Kisi_Soal_Matematika_Kelas_${CONFIG.KELAS}.pdf`);
+}
+
+/**
+ * 6. Download Laporan Analisis Butir Soal & Matriks Respon Siswa (Landscape A4 Resmi)
+ */
+export function downloadAnalisisButirPDF(results: ExamResult[], questions: Question[]): void {
+  const doc = new jsPDF({
+    orientation: 'landscape',
+    unit: 'mm',
+    format: 'a4',
+  });
+
+  const pageWidth = doc.internal.pageSize.getWidth(); // 297mm
+  const pageHeight = doc.internal.pageSize.getHeight(); // 210mm
+  const marginLeft = 10;
+  const marginRight = 10;
+  const contentWidth = pageWidth - marginLeft - marginRight; // 277mm
+
+  const { itemStats, allResponses } = computeItemAnalysis(results, questions);
+
+  let y = 13;
+
+  // --- KOP RESMI SEKOLAH ---
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(10);
+  doc.text('PEMERINTAH KABUPATEN JEMBRANA', pageWidth / 2, y, { align: 'center' });
+  y += 4.5;
+  doc.text('DINAS PENDIDIKAN KEPEMUDAAN DAN OLAHRAGA', pageWidth / 2, y, { align: 'center' });
+  y += 5.5;
+  doc.setFontSize(13);
+  doc.text(CONFIG.SEKOLAH, pageWidth / 2, y, { align: 'center' });
+  y += 4.5;
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.text(CONFIG.ALAMAT_SEKOLAH, pageWidth / 2, y, { align: 'center' });
+  y += 2.5;
+
+  // Garis Pembatas Kop
+  doc.setLineWidth(0.8);
+  doc.line(marginLeft, y, pageWidth - marginRight, y);
+  doc.setLineWidth(0.2);
+  doc.line(marginLeft, y + 0.8, pageWidth - marginRight, y + 0.8);
+  y += 5.5;
+
+  // --- JUDUL DOKUMEN ---
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(11);
+  doc.text('LAPORAN ANALISIS BUTIR SOAL DAN MATRIKS RESPON SISWA', pageWidth / 2, y, {
+    align: 'center',
+  });
+  y += 4.5;
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.text(
+    `Mata Pelajaran: ${CONFIG.MATA_PELAJARAN} • Materi: ${CONFIG.MATERI} • Kelas ${CONFIG.KELAS} • KKTP: ${CONFIG.KKTP} • Total Siswa: ${results.length}`,
+    pageWidth / 2,
+    y,
+    { align: 'center' }
+  );
+  y += 6;
+
+  // Lebar kolom tetap untuk identitas dan ringkasan
+  const colNoW = 7;
+  const colAbsenW = 10;
+  const colNamaW = 38;
+  const colSkorW = 12;
+  const colNilaiW = 12;
+  const colStatusW = 16;
+
+  const fixedColsWidth = colNoW + colAbsenW + colNamaW + colSkorW + colNilaiW + colStatusW; // 95mm
+  const remainingForQuestions = contentWidth - fixedColsWidth; // 182mm
+  const qColW = Math.min(6.5, remainingForQuestions / questions.length);
+
+  const drawTableHeader = (curY: number) => {
+    doc.setFillColor(30, 58, 138);
+    doc.rect(marginLeft, curY, contentWidth, 7, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7);
+
+    let curX = marginLeft;
+    doc.text('No', curX + colNoW / 2, curY + 4.8, { align: 'center' });
+    curX += colNoW;
+    doc.text('Absen', curX + colAbsenW / 2, curY + 4.8, { align: 'center' });
+    curX += colAbsenW;
+    doc.text('Nama Siswa', curX + 2, curY + 4.8);
+    curX += colNamaW;
+
+    // Kolom Butir Soal 1..N
+    questions.forEach((_, qIdx) => {
+      doc.text(`S${qIdx + 1}`, curX + qColW / 2, curY + 4.8, { align: 'center' });
+      curX += qColW;
+    });
+
+    // Kolom Hasil
+    doc.text('Skor', curX + colSkorW / 2, curY + 4.8, { align: 'center' });
+    curX += colSkorW;
+    doc.text('Nilai', curX + colNilaiW / 2, curY + 4.8, { align: 'center' });
+    curX += colNilaiW;
+    doc.text('Status', curX + colStatusW / 2, curY + 4.8, { align: 'center' });
+
+    doc.setTextColor(0, 0, 0);
+  };
+
+  drawTableHeader(y);
+  y += 7;
+
+  // Render Baris Siswa
+  results.forEach((r, sIdx) => {
+    if (y + 6 > pageHeight - 45) {
+      doc.addPage();
+      y = 14;
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(8);
+      doc.setTextColor(71, 85, 105);
+      doc.text('Lanjutan Matriks Respon Butir Soal Siswa:', marginLeft, y - 2);
+      drawTableHeader(y);
+      y += 7;
+    }
+
+    const key = `${r.nama}_${r.noAbsen}_${r.timestamp}`;
+    const studentResponses = allResponses.get(key) || {};
+    const isPass = r.status === 'Lulus' || r.nilai >= CONFIG.KKTP;
+
+    const isEven = sIdx % 2 === 0;
+    doc.setFillColor(isEven ? 255 : 248, isEven ? 255 : 250, isEven ? 255 : 252);
+    doc.rect(marginLeft, y, contentWidth, 5.8, 'F');
+    doc.setDrawColor(226, 232, 240);
+    doc.rect(marginLeft, y, contentWidth, 5.8, 'S');
+
+    let curX = marginLeft;
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(6.8);
+    doc.setTextColor(30, 41, 59);
+
+    // No
+    doc.text(String(sIdx + 1), curX + colNoW / 2, y + 4.2, { align: 'center' });
+    curX += colNoW;
+
+    // Absen
+    doc.text(String(r.noAbsen || '-'), curX + colAbsenW / 2, y + 4.2, { align: 'center' });
+    curX += colAbsenW;
+
+    // Nama
+    const truncatedNama = doc.splitTextToSize(r.nama || 'Siswa', colNamaW - 3)[0] || r.nama;
+    doc.text(truncatedNama, curX + 2, y + 4.2);
+    curX += colNamaW;
+
+    // Respon Butir Soal (1 = Benar Hijau, 0.5 = Sebagian Kuning, 0 = Salah Merah)
+    questions.forEach((q) => {
+      const resp = studentResponses[q.id];
+      const isBenar = resp && resp.status === 'benar';
+      const isSebagian = resp && resp.status === 'sebagian';
+
+      if (isBenar) {
+        doc.setFillColor(220, 252, 231); // green-100
+        doc.rect(curX + 0.3, y + 0.5, qColW - 0.6, 4.8, 'F');
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(22, 101, 52); // green-800
+        doc.text('1', curX + qColW / 2, y + 4.1, { align: 'center' });
+      } else if (isSebagian) {
+        doc.setFillColor(254, 243, 199); // amber-100
+        doc.rect(curX + 0.3, y + 0.5, qColW - 0.6, 4.8, 'F');
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(180, 83, 9); // amber-700
+        doc.text('½', curX + qColW / 2, y + 4.1, { align: 'center' });
+      } else {
+        doc.setFillColor(254, 226, 226); // red-100
+        doc.rect(curX + 0.3, y + 0.5, qColW - 0.6, 4.8, 'F');
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(185, 28, 28); // red-700
+        doc.text('0', curX + qColW / 2, y + 4.1, { align: 'center' });
+      }
+
+      curX += qColW;
+    });
+
+    // Total Skor
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(30, 41, 59);
+    doc.text(String(r.benar ?? 0), curX + colSkorW / 2, y + 4.2, { align: 'center' });
+    curX += colSkorW;
+
+    // Nilai
+    doc.setTextColor(isPass ? 22 : 185, isPass ? 101 : 28, isPass ? 52 : 28);
+    doc.text(String(r.nilai ?? 0), curX + colNilaiW / 2, y + 4.2, { align: 'center' });
+    curX += colNilaiW;
+
+    // Status
+    doc.text(isPass ? 'Tuntas' : 'Remedial', curX + colStatusW / 2, y + 4.2, { align: 'center' });
+
+    y += 5.8;
+  });
+
+  // --- BARIS STATISTIK BUTIR SOAL DI BAWAH ---
+  const statsRows = [
+    {
+      label: 'Kunci Jawaban',
+      valGetter: (idx: number) => formatCorrectAnswer(questions[idx]),
+      bgColor: [241, 245, 249],
+      textColor: [30, 41, 59],
+    },
+    {
+      label: 'Σ Benar',
+      valGetter: (idx: number) => String(itemStats[idx]?.correctCount ?? 0),
+      bgColor: [236, 253, 245],
+      textColor: [6, 95, 70],
+    },
+    {
+      label: '% Ketercapaian',
+      valGetter: (idx: number) => `${itemStats[idx]?.persentaseKetercapaian ?? 0}%`,
+      bgColor: [239, 246, 255],
+      textColor: [29, 78, 216],
+    },
+    {
+      label: 'Tingkat Kesukaran',
+      valGetter: (idx: number) => {
+        const k = itemStats[idx]?.klasifikasiKesukaran || 'Sedang';
+        return k === 'Mudah' ? 'M' : k === 'Sedang' ? 'Sd' : 'Sk';
+      },
+      bgColor: [254, 242, 242],
+      textColor: [153, 27, 27],
+    },
+    {
+      label: 'Daya Pembeda (D)',
+      valGetter: (idx: number) => String(itemStats[idx]?.dayaPembeda ?? 0),
+      bgColor: [250, 245, 255],
+      textColor: [107, 33, 168],
+    },
+  ];
+
+  statsRows.forEach((sRow) => {
+    if (y + 5.5 > pageHeight - 35) {
+      doc.addPage();
+      y = 15;
+    }
+
+    doc.setFillColor(sRow.bgColor[0], sRow.bgColor[1], sRow.bgColor[2]);
+    doc.rect(marginLeft, y, contentWidth, 5.2, 'F');
+    doc.setDrawColor(203, 213, 225);
+    doc.rect(marginLeft, y, contentWidth, 5.2, 'S');
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(6.8);
+    doc.setTextColor(sRow.textColor[0], sRow.textColor[1], sRow.textColor[2]);
+
+    // Label spans across first columns
+    const labelSpanW = colNoW + colAbsenW + colNamaW;
+    doc.text(sRow.label, marginLeft + labelSpanW - 2, y + 3.8, { align: 'right' });
+
+    let curX = marginLeft + labelSpanW;
+    questions.forEach((_, qIdx) => {
+      const val = sRow.valGetter(qIdx);
+      doc.text(val, curX + qColW / 2, y + 3.8, { align: 'center' });
+      curX += qColW;
+    });
+
+    y += 5.2;
+  });
+
+  // Cek apakah muat untuk tanda tangan
+  if (y + 35 > pageHeight - 15) {
+    doc.addPage();
+    y = 18;
+  } else {
+    y += 8;
+  }
+
+  // --- TANDA TANGAN (KEPALA SEKOLAH & GURU) ---
+  const tglStr = formatIndonesianDate();
+  const colLeftX = marginLeft + 14;
+  const colRightX = pageWidth - marginRight - 65;
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8.5);
+  doc.setTextColor(30, 41, 59);
+
+  // Kiri: Kepala Sekolah
+  doc.text('Mengetahui,', colLeftX, y);
+  doc.text('Kepala Sekolah,', colLeftX, y + 4.5);
+
+  // Kanan: Guru Pengampu
+  doc.text(`Jembrana, ${tglStr}`, colRightX, y);
+  doc.text('Guru Mata Pelajaran,', colRightX, y + 4.5);
+
+  const sigLineY = y + 21;
+  // Nama & NIP Kepala Sekolah
+  doc.setFont('helvetica', 'bold');
+  doc.text(CONFIG.KEPALA_SEKOLAH, colLeftX, sigLineY);
+  doc.line(colLeftX, sigLineY + 1, colLeftX + 55, sigLineY + 1);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.text(`NIP. ${CONFIG.NIP_KEPALA_SEKOLAH}`, colLeftX, sigLineY + 5);
+
+  // Nama & NIP Guru
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8.5);
+  doc.text(CONFIG.GURU, colRightX, sigLineY);
+  doc.line(colRightX, sigLineY + 1, colRightX + 55, sigLineY + 1);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.text(`NIP. ${CONFIG.NIP_GURU}`, colRightX, sigLineY + 5);
+
+  // --- FOOTER DI SETIAP HALAMAN ---
+  const totalPages = doc.getNumberOfPages();
+  for (let i = 1; i <= totalPages; i++) {
+    doc.setPage(i);
+    doc.setFont('helvetica', 'italic');
+    doc.setFontSize(7);
+    doc.setTextColor(148, 163, 184);
+    doc.text(
+      `Dokumen Analisis Butir Soal Empiris • ${CONFIG.SEKOLAH} • Dicetak otomatis sistem`,
+      marginLeft,
+      pageHeight - 6
+    );
+    doc.text(`Halaman ${i} dari ${totalPages}`, pageWidth - marginRight, pageHeight - 6, {
+      align: 'right',
+    });
+  }
+
+  doc.save(`Analisis_Butir_Soal_Matematika_Kelas_${CONFIG.KELAS}.pdf`);
+}
+
